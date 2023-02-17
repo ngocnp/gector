@@ -12,7 +12,7 @@ from gector.bert_token_embedder import PretrainedBertEmbedder
 from gector.datareader import Seq2LabelsDatasetReader
 from gector.seq2labels_model import Seq2Labels
 from gector.trainer import Trainer
-from gector.tokenizer_indexer import PretrainedBertIndexer
+from gector.tokenizer_indexer import PretrainedBertIndexer, CharJaBertIndexer
 from utils.helpers import get_weights_name
 
 
@@ -25,12 +25,13 @@ def fix_seed():
 
 
 def get_token_indexers(model_name, max_pieces_per_token=5, lowercase_tokens=True, special_tokens_fix=0):
-    bert_token_indexer = PretrainedBertIndexer(
+    bert_token_indexer = CharJaBertIndexer(
         pretrained_model=model_name,
         max_pieces_per_token=max_pieces_per_token,
         do_lowercase=lowercase_tokens,
         special_tokens_fix=special_tokens_fix
     )
+    print("get_token_indexers")
     return {'bert': bert_token_indexer}
 
 
@@ -54,6 +55,7 @@ def get_data_reader(model_name, max_len, skip_correct=False, skip_complex=0,
                     test_mode=False, tag_strategy="keep_one",
                     broken_dot_strategy="keep", lowercase_tokens=True,
                     max_pieces_per_token=3, tn_prob=0, tp_prob=1, special_tokens_fix=0,):
+    print("get_data_reader")
     token_indexers = get_token_indexers(model_name,
                                         max_pieces_per_token=max_pieces_per_token,
                                         lowercase_tokens=lowercase_tokens,
@@ -158,7 +160,7 @@ def main(args):
                               )
     iterator.index_with(vocab)
     val_iterator = BucketIterator(batch_size=args.batch_size,
-                                  sorting_keys=[("tokens", "num_tokens")], 
+                                  sorting_keys=[("tokens", "num_tokens")],
                                   instances_per_epoch=None)
     val_iterator.index_with(vocab)
 
@@ -177,17 +179,18 @@ def main(args):
                       accumulated_batch_count=args.accumulation_size,
                       cold_step_count=args.cold_steps_count,
                       cold_lr=args.cold_lr,
+                      # num_serialized_models_to_keep=3,
                       cuda_verbose_step=int(args.cuda_verbose_steps)
                       if args.cuda_verbose_steps else None
                       )
     print("Start training")
     trainer.train()
-
-    # Here's how to save the model.
-    out_model = os.path.join(args.model_dir, 'model.th')
-    with open(out_model, 'wb') as f:
-        torch.save(model.state_dict(), f)
-    print("Model is dumped")
+    #
+    # # Here's how to save the model.
+    # out_model = os.path.join(args.model_dir, 'model.th')
+    # with open(out_model, 'wb') as f:
+    #     torch.save(model.state_dict(), f)
+    # print("Model is dumped")
 
 
 if __name__ == '__main__':

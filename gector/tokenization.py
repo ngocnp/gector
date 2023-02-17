@@ -177,5 +177,40 @@ def tokenize_batch(tokenizer, batch_tokens, index_name="bert",
     # tt = sum(timings.values())
     # timings = {k:f"{round(v*100/tt, 2)}%" for k,v in timings.items()}
     # print(timings)
+    print("output", len(output[index_name][0]))
+    print(output)
+    return output
 
+
+def tokenize_batch_for_char_ja(tokenizer, batch_tokens, index_name="bert",
+                               max_bpe_length=80, max_bpe_pieces=1):
+    timings = {}
+    t0 = time()
+    # get batch with sentences
+    # batch_sentences = ["".join(x) for x in batch_tokens]
+    # get token level offsets
+    # token_offset_list = get_token_offsets(batch_tokens)
+    # token_offset_list = get_token_offsets_multi(batch_tokens)
+    t1 = time()
+    timings["offset_time"] = t1 - t0
+    # tokenize batch
+    tokenizer_output = [tokenizer.convert_tokens_to_ids(tokens) for tokens in batch_tokens]
+
+    t2 = time()
+    timings["tokenize_time"] = t2 - t1
+    # postprocess batch
+    input_ids = tokenizer_output
+    offset = [list(range(len(input_ids[i]))) for i in range(len(input_ids))]
+    mask = [[1] * len(input_ids[i]) for i in range(len(input_ids))]
+    output = {index_name: input_ids,
+              f"{index_name}-offsets": offset,
+              "mask": mask}
+    output = pad_output(output)
+    t3 = time()
+    timings["pading_time"] = t3 - t2
+    # tt = sum(timings.values())
+    # timings = {k:f"{round(v*100/tt, 2)}%" for k,v in timings.items()}
+    # print(timings)
+    print("output", len(input_ids[0]))
+    print(output)
     return output

@@ -12,7 +12,7 @@ from transformers import AutoTokenizer
 
 from utils.helpers import START_TOKEN
 
-from gector.tokenization import tokenize_batch
+from gector.tokenization import tokenize_batch, tokenize_batch_for_char_ja
 import copy
 
 logger = logging.getLogger(__name__)
@@ -63,6 +63,8 @@ class TokenizerIndexer(TokenIndexer[int]):
                           index_name: str) -> Dict[str, List[int]]:
         text = [token.text for token in tokens]
         batch_tokens = [text]
+        print()
+        print("tokens_to_indices", len(tokens), tokens)
 
         output_fast = tokenize_batch(self.tokenizer,
                                      batch_tokens,
@@ -158,4 +160,74 @@ class PretrainedBertIndexer(TokenizerIndexer):
                          max_pieces=max_pieces,
                          max_pieces_per_token=max_pieces_per_token
                         )
+
+
+class CharJaBertIndexer(TokenizerIndexer):
+    # pylint: disable=line-too-long
+    """
+    A ``TokenIndexer`` corresponding to a pretrained BERT model.
+
+    Parameters
+    ----------
+    pretrained_model: ``str``
+        Either the name of the pretrained model to use (e.g. 'bert-base-uncased'),
+        or the path to the .txt file with its vocabulary.
+        If the name is a key in the list of pretrained models at
+        https://github.com/huggingface/pytorch-pretrained-BERT/blob/master/pytorch_pretrained_bert/tokenization.py#L33
+        the corresponding path will be used; otherwise it will be interpreted as a path or URL.
+    do_lowercase: ``bool``, optional (default = True)
+        Whether to lowercase the tokens before converting to wordpiece ids.
+    max_pieces: int, optional (default: 512)
+        The BERT embedder uses positional embeddings and so has a corresponding
+        maximum length for its input ids. Any inputs longer than this will
+        either be truncated (default), or be split apart and batched using a
+        sliding window.
+    """
+
+    def __init__(self,
+                 pretrained_model: str,
+                 do_lowercase: bool = True,
+                 max_pieces: int = 512,
+                 max_pieces_per_token: int = 1,
+                 special_tokens_fix: int = 0) -> None:
+
+        model_name = copy.deepcopy(pretrained_model)
+
+        model_tokenizer = AutoTokenizer.from_pretrained(
+            model_name, do_lower_case=do_lowercase, do_basic_tokenize=False)
+
+        # to adjust all tokenizers
+        if hasattr(model_tokenizer, 'encoder'):
+            model_tokenizer.vocab = model_tokenizer.encoder
+        if hasattr(model_tokenizer, 'sp_model'):
+            model_tokenizer.vocab = defaultdict(lambda: 1)
+            for i in range(model_tokenizer.sp_model.get_piece_size()):
+                model_tokenizer.vocab[model_tokenizer.sp_model.id_to_piece(i)] = i
+
+        if special_tokens_fix:
+            model_tokenizer.add_tokens([START_TOKEN])
+            model_tokenizer.vocab[START_TOKEN] = len(model_tokenizer) - 1
+
+        super().__init__(tokenizer=model_tokenizer,
+                         max_pieces=max_pieces,
+                         max_pieces_per_token=max_pieces_per_token
+                        )
+
+    @overrides
+    def tokens_to_indices(self, tokens: List[Token],
+                          vocabulary: Vocabulary,
+                          index_name: str) -> Dict[str, List[int]]:
+        text = [token.text for token in tokens]
+        batch_tokens = [text]
+        print()
+        print("tokens_to_indices", len(tokens), tokens)
+
+        output_fast = tokenize_batch_for_char_ja(self.tokenizer,
+                                                 batch_tokens,
+                                                 max_bpe_length=self.max_pieces,
+                                                 max_bpe_pieces=self.max_pieces_per_token)
+        output_fast = {k: v[0] for k, v in output_fast.items()}
+        return output_fast
+
+
 

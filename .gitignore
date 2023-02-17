@@ -133,3 +133,7 @@ dmypy.json
 .idea
 
 *.sh
+
+# added
+data/japanese_vocabulary
+test

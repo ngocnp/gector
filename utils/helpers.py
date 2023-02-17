@@ -5,8 +5,8 @@ from pathlib import Path
 VOCAB_DIR = Path(__file__).resolve().parent.parent / "data"
 PAD = "@@PADDING@@"
 UNK = "@@UNKNOWN@@"
-START_TOKEN = "$START"
-SEQ_DELIMETERS = {"tokens": " ",
+START_TOKEN = "[CLS]"
+SEQ_DELIMETERS = {"tokens": "　",
                   "labels": "SEPL|||SEPR",
                   "operations": "SEPL__SEPR"}
 REPLACEMENTS = {
@@ -213,6 +213,7 @@ def get_weights_name(transformer_name, lowercase):
         return 'xlnet-base-cased'
     if transformer_name == 'xlnet-large':
         return 'xlnet-large-cased'
+    return transformer_name
 
 
 def remove_double_tokens(sent):
